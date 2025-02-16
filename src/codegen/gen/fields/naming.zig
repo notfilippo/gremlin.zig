@@ -21,11 +21,17 @@ const std = @import("std");
 
 /// List of Zig keywords that need special handling to avoid naming conflicts
 const keywords = [_][]const u8{ "align", "and", "asm", "async", "await", "break", "catch", "comptime", "const", "continue", "defer", "else", "enum", "errdefer", "error", "export", "extern", "fn", "for", "if", "inline", "noalias", "noinline", "nosuspend", "opaque", "or", "orelse", "packed", "pub", "resume", "return", "struct", "suspend", "switch", "test", "threadlocal", "try", "union", "unreachable", "usingnamespace", "var", "volatile", "while", "void", "null" };
+const primitives = [_][]const u8{ "i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64", "i128", "u128", "isize", "usize", "c_char", "c_short", "c_ushort", "c_int", "c_uint", "c_long", "c_ulong", "c_longlong", "c_ulonglong", "c_longdouble", "f16", "f32", "f64", "f80", "f128", "bool", "anyopaque", "void", "noreturn", "type", "anyerror", "comptime_int", "comptime_float", "true", "false", "null", "undefined" };
 
 /// Check if a given name is a Zig keyword
-fn isKeyword(name: []const u8) bool {
+fn isKeywordOrPrimitive(name: []const u8) bool {
     for (keywords) |keyword| {
         if (std.mem.eql(u8, keyword, name)) {
+            return true;
+        }
+    }
+    for (primitives) |primitive| {
+        if (std.mem.eql(u8, primitive, name)) {
             return true;
         }
     }
@@ -124,7 +130,7 @@ fn makeZigSnakeCase(allocator: std.mem.Allocator, name: []const u8) ![]const u8 
 
     // Append underscore to keyword names
     const slice = try result.toOwnedSlice();
-    if (isKeyword(slice)) {
+    if (isKeywordOrPrimitive(slice)) {
         const with_underscore = try std.fmt.allocPrint(allocator, "{s}_", .{slice});
         allocator.free(slice);
         return with_underscore;
@@ -173,7 +179,7 @@ fn makeZigCamelCase(allocator: std.mem.Allocator, name: []const u8, start_upper:
 
     // Append underscore to keyword names
     const slice = try result.toOwnedSlice();
-    if (isKeyword(slice)) {
+    if (isKeywordOrPrimitive(slice)) {
         const with_underscore = try std.fmt.allocPrint(allocator, "{s}_", .{slice});
         allocator.free(slice);
         return with_underscore;
@@ -193,6 +199,10 @@ fn containsName(used_names: *std.ArrayList([]const u8), name: []const u8) bool {
 
 /// Generate a unique name by appending numbers if needed
 fn getUnusedName(allocator: std.mem.Allocator, used_names: *std.ArrayList([]const u8), base_name: []const u8) ![]const u8 {
+    if (isKeywordOrPrimitive(base_name)) {
+        return try std.fmt.allocPrint(allocator, "{s}_", .{base_name});
+    }
+
     // Try base name first
     if (!containsName(used_names, base_name)) {
         const result = try allocator.dupe(u8, base_name);
