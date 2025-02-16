@@ -20,8 +20,8 @@
 const std = @import("std");
 const paths = @import("./paths.zig");
 const naming = @import("./fields/naming.zig");
-const Import =  @import("../../parser/main.zig").Import;
-const ProtoFile =  @import("../../parser/main.zig").ProtoFile;
+const Import = @import("../../parser/main.zig").Import;
+const ProtoFile = @import("../../parser/main.zig").ProtoFile;
 const ZigFile = @import("./file.zig").ZigFile;
 
 /// Represents a Zig import statement, handling both system imports (std, gremlin)
@@ -152,6 +152,9 @@ pub fn importResolve(
         return try ZigImport.init(allocator, src, name, std.fs.path.basename(out_path));
     } else {
         // Different directory - use relative path
-        return try ZigImport.init(allocator, src, name, rel_to_project);
+        const rel_path = try std.fs.path.relative(allocator, file_dir, import_path);
+        defer allocator.free(rel_path);
+
+        return try ZigImport.init(allocator, src, name, rel_path);
     }
 }
